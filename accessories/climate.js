@@ -34,10 +34,13 @@ function HomeAssistantClimate(log, data, client) {
 }
 HomeAssistantClimate.prototype = {
   onEvent: function (oldState, newState) {
+    const list = {'idle':0, 'heat':1, 'cool':2, 'auto':3, 'off':0}
     this.ThermostatService.getCharacteristic(Characteristic.CurrentTemperature)
           .setValue(newState.attributes.current_temperature || newState.attributes.temperature, null, 'internal');
     this.ThermostatService.getCharacteristic(Characteristic.TargetTemperature)
           .setValue(newState.attributes.temperature, null, 'internal');
+    this.ThermostatService.getCharacteristic(Characteristic.TargetHeatingCoolingState)
+          .setValue(list[newState.state], null, 'internal');
   },
   getCurrentTemp: function (callback) {
     this.client.fetchState(this.entity_id, function (data) {
@@ -81,11 +84,10 @@ HomeAssistantClimate.prototype = {
   },
   getTargetHeatingCoolingState: function (callback) {
     this.log('fetching Current Heating Cooling state for: ' + this.name);
-
     this.client.fetchState(this.entity_id, function (data) {
-      if (data && data.attributes && data.attributes.operation_mode) {
+      if (data) {
         var state;
-        switch (data.attributes.operation_mode) {
+        switch (data.state) {
           case 'auto':
             state = Characteristic.TargetHeatingCoolingState.AUTO;
             break;
@@ -139,7 +141,7 @@ HomeAssistantClimate.prototype = {
 
     this.client.callService(this.domain, 'set_operation_mode', serviceData, function (data) {
       if (data) {
-        that.log(`Successfully set current heating cooling state of '${that.name}'`);
+        that.log(`Successfully set current heating cooling state of '${that.name}' to ${mode}`);
         callback();
       } else {
         callback(communicationError);
