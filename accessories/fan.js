@@ -18,7 +18,7 @@ function HomeAssistantFan(log, data, client) {
   if (data.attributes && data.attributes.homebridge_mfg) {
     this.mfg = String(data.attributes.homebridge_mfg);
   } else {
-    this.mfg = 'Home Assistant';
+    this.mfg = 'NewBee Home';
   }
   if (data.attributes && data.attributes.homebridge_model) {
     this.model = String(data.attributes.homebridge_model);
@@ -38,6 +38,10 @@ HomeAssistantFan.prototype = {
   onEvent(oldState, newState) {
     this.fanService.getCharacteristic(Characteristic.On)
                    .setValue(newState.state === 'on', null, 'internal');
+    if(newState.attributes.speed != 'off'){
+      this.fanService.getCharacteristic(Characteristic.RotationSpeed)
+                   .setValue(newState.attributes.speed, null, 'internal');
+      }
   },
   getPowerState(callback) {
     this.client.fetchState(this.entity_id, (data) => {
@@ -89,19 +93,7 @@ HomeAssistantFan.prototype = {
         if (data.state === 'off') {
           callback(null, 0);
         } else {
-          switch (data.attributes.speed) {
-            case 'low':
-              callback(null, 25);
-              break;
-            case 'medium':
-              callback(null, 50);
-              break;
-            case 'high':
-              callback(null, 100);
-              break;
-            default:
-              callback(null, 0);
-          }
+          callback(null, data.attributes.speed);
         }
       } else {
         callback(communicationError);
@@ -117,14 +109,7 @@ HomeAssistantFan.prototype = {
     const that = this;
     const serviceData = {};
     serviceData.entity_id = this.entity_id;
-
-    if (speed <= 25) {
-      serviceData.speed = 'low';
-    } else if (speed <= 75) {
-      serviceData.speed = 'medium';
-    } else if (speed <= 100) {
-      serviceData.speed = 'high';
-    }
+    serviceData.speed = speed;
 
     this.log(`Setting speed on the '${this.name}' to ${serviceData.speed}`);
 
